@@ -17,16 +17,36 @@ do not want to support near real-time updates.  Or when your data is delivered i
 ## Features
 * GeoEvent Delay Processor
 
+## Requirements
+
+* ArcGIS GeoEvent Processor for Server version 10.6 or later.
+* ArcGIS GeoEvent Processor SDK version 10.6.
+* Java JDK 1.8 or greater.
+* Maven 3.6.3 or greater.
+
 ## Instructions
 
 Building the source code:
 
-1. Make sure Maven and ArcGIS GeoEvent Server SDK are installed on your machine.
-2. Run 'mvn install -Dcontact.address=[YourContactEmailAddress]'
+1. Make sure Maven and ArcGIS GeoEvent Processor SDK are installed on your machine.  <br>
+ _c:\temp>_ javac -version <br>
+ _c:\temp>_ mvn -version  <br>
+2. Clone the repository to your temp drive  <br>
+ _c:\temp>_ git clone <repository URL> CD into the directory  <br>
+3. Build with maven  <br>
+ _c:\temp>_ mvn clean install -Dcontact.address=[YourContactEmailAddress]'
 
 Installing the built jar files:
 
-1. Copy the *.jar files under the 'target' sub-folder(s) into the [ArcGIS-GeoEvent-Server-Install-Directory]/deploy folder.
+1. Use the .jar file built above or download a [zip of jar and documentation](https://www.arcgis.com/home/item.html?id=cf02f3b8564042db8de60f582e1ad2a3).
+2. Copy the jar files into the [ArcGIS-GeoEvent-Processor-Install-Directory]/deploy folder.
+
+
+## Resources
+
+* [ArcGIS GeoEvent Server SDK](https://enterprise.arcgis.com/en/geoevent/latest/reference/getting-started-with-the-geoevent-server-sdk.htm)
+* [ArcGIS GeoEvent Server](https://enterprise.arcgis.com/en/geoevent/)
+* [Esri GeoEvent Community](https://enterprise.arcgis.com/en/geoevent/latest/reference/getting-started-with-the-geoevent-server-sdk.htm)
 
 ## Issues
 
