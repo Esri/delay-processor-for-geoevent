@@ -4,20 +4,22 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.esri.geoevent.processor</groupId>
 	<artifactId>delay-processor</artifactId>
-	<version>10.4.0</version>
+  <version>${revision}</version>
 	<name>${project.artifactId}</name>
-	<description>Release ${project.release}: Delays the processing of events by a specified amount of time. All delayed events are held in a sorted queue in memory. The queue is sorted by event time (based on the time field selected). To clear the GeoEvent queue Restart the service. To clear the duplicate key cache change any one of Updates Allowed, Use TRACK_ID, or Delay Time Field and save your changes (then change it back if you like). </description>
 	<url>http://www.esri.com</url>
 	<organization>
 		<name>Esri</name>
-		<url>https://github.com/eironside/geoevent-delay-processor</url>
+    <url>https://www.arcgis.com/home/item.html?id=1e37ccff6b764227b517b69c9dd98a36</url>
 	</organization>
 	<packaging>bundle</packaging>
 	<properties>
-		<project.release>1.4</project.release>
-		<maven.bundle.plugin.version>4.2.1</maven.bundle.plugin.version>
-		<junit.version>4.8.1</junit.version>
-		<contact.address>eironside@esri.com</contact.address>
+    <revision>10.6.0</revision>
+    <project.release>1.5</project.release>
+    <maven.bundle.plugin.version>5.1.2</maven.bundle.plugin.version>
+    <maven.resources.plugin.version>3.2.0</maven.resources.plugin.version>
+    <maven.compiler.plugin.version>3.8.1</maven.compiler.plugin.version>
+    <junit.version>4.13.2</junit.version>
+    <contact.address>geoevent@esri.com</contact.address>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.build.propertiesEncoding>ISO-8859-1</project.build.propertiesEncoding>
 	</properties>
@@ -40,6 +42,7 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-resources-plugin</artifactId>
+        <version>${maven.resources.plugin.version}</version>
 				<configuration>
 					<propertiesEncoding>${project.build.propertiesEncoding}</propertiesEncoding>
 				</configuration>
@@ -47,6 +50,7 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
+        <version>${maven.compiler.plugin.version}</version>
 				<configuration>
 					<source>1.8</source>
 					<target>1.8</target>
@@ -58,6 +62,7 @@
 				<version>${maven.bundle.plugin.version}</version>
 				<extensions>true</extensions>
 				<configuration>
+          <finalName>${project.name}-${revision}</finalName>
 					<instructions>
 						<AGES-Domain>${project.groupId}</AGES-Domain>
 						<Bundle-ContactAddress>${contact.address}</Bundle-ContactAddress>
