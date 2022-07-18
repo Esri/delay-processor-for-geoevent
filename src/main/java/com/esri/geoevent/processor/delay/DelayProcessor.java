@@ -2,6 +2,7 @@ package com.esri.geoevent.processor.delay;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -17,7 +18,6 @@ import com.esri.ges.core.component.ComponentException;
 import com.esri.ges.core.geoevent.GeoEvent;
 import com.esri.ges.core.geoevent.GeoEventPropertyName;
 import com.esri.ges.core.property.Property;
-import com.esri.ges.core.security.GeoEventServerCryptoService;
 import com.esri.ges.core.validation.ValidationException;
 import com.esri.ges.framework.i18n.BundleLogger;
 import com.esri.ges.framework.i18n.BundleLoggerFactory;
@@ -34,47 +34,50 @@ import com.esri.ges.processor.GeoEventProcessorDefinition;
  * events are placed in a private queue and processed based on a combination of the delay time and the time they were
  * received by GeoEvent Server (the RECEIVED_TIME property).
  */
+@SuppressWarnings("deprecation")
 public class DelayProcessor extends GeoEventProcessorBase implements GeoEventProducer, EventUpdatable, DelayProperties
 {
-  private static final BundleLogger            LOGGER                 = BundleLoggerFactory.getLogger(DelayProcessor.class);
-  private static final int                     MAX_ENTRIES            = 20000;
+  private static final BundleLogger                 LOGGER                 = BundleLoggerFactory.getLogger(DelayProcessor.class);
+  private static final int                          MAX_ENTRIES            = 20000;
 
-  private ExecutorService                      executorService        = Executors.newSingleThreadExecutor();
-  private final BlockingQueue<DelayedGeoEvent> geoEventQueue          = new DelayQueue<DelayedGeoEvent>();
+  private static final Map<String, ExecutorService> executorServiceManager = new HashMap<String, ExecutorService>();
+  private ExecutorService                           executorService;
+  private final BlockingQueue<DelayedGeoEvent>      geoEventQueue          = new DelayQueue<DelayedGeoEvent>();
 
-  private final Map<String, String>            geoEventTimeKeySet     = Collections.synchronizedMap(new LinkedHashMap<String, String>()
-                                                                        {
-                                                                          private static final long serialVersionUID = 3497816525702669924L;
+  private final Map<String, String>                 geoEventTimeKeySet     = Collections.synchronizedMap(new LinkedHashMap<String, String>()
+                                                                             {
+                                                                               private static final long serialVersionUID = 3497816525702669924L;
 
-                                                                          protected boolean removeEldestEntry(Map.Entry<String, String> eldest)
-                                                                          {
-                                                                            return size() > MAX_ENTRIES;
-                                                                          }
-                                                                        });
+                                                                               protected boolean removeEldestEntry(Map.Entry<String, String> eldest)
+                                                                               {
+                                                                                 return size() > MAX_ENTRIES;
+                                                                               }
+                                                                             });
 
-  private final Map<String, String>            geoEventLocationKeySet = Collections.synchronizedMap(new LinkedHashMap<String, String>()
-                                                                        {
-                                                                          private static final long serialVersionUID = 3497816525702669925L;
+  private final Map<String, String>                 geoEventLocationKeySet = Collections.synchronizedMap(new LinkedHashMap<String, String>()
+                                                                             {
+                                                                               private static final long serialVersionUID = 3497816525702669925L;
 
-                                                                          protected boolean removeEldestEntry(Map.Entry<String, String> eldest)
-                                                                          {
-                                                                            return size() > MAX_ENTRIES;
-                                                                          }
-                                                                        });
+                                                                               protected boolean removeEldestEntry(Map.Entry<String, String> eldest)
+                                                                               {
+                                                                                 return size() > MAX_ENTRIES;
+                                                                               }
+                                                                             });
 
-  private final Messaging                      messaging;
-  private GeoEventProducer                     geoEventProducer;
-  private long                                 delayValue;
-  private TimeUnit                             delayValueUnit;
-  private long                                 delayMilliseconds      = 0;
+  private final Messaging                           messaging;
+  private GeoEventProducer                          geoEventProducer;
+  private long                                      delayValue;
+  private TimeUnit                                  delayValueUnit;
+  private long                                      delayMilliseconds      = 0;
 
-  private String                               delayField             = RECEIVED_TIME;
-  private boolean                              enforceDelayThreshold  = false;
-  private boolean                              allowDuplicates        = true;
-  private boolean                              useTrackID             = false;
-  private boolean                              useLocation            = false;
+  private String                                    delayField             = RECEIVED_TIME;
+  private boolean                                   enforceDelayThreshold  = false;
+  private boolean                                   allowDuplicates        = true;
+  private boolean                                   useTrackID             = false;
+  private boolean                                   useLocation            = false;
 
-  private Future<?>                            eventLoop;
+  private Future<?>                                 eventLoop;
+  private boolean                                   isRunning              = false;
 
   public DelayProcessor(GeoEventProcessorDefinition definition, Messaging messaging) throws ComponentException
   {
@@ -86,7 +89,6 @@ public class DelayProcessor extends GeoEventProcessorBase implements GeoEventPro
   public void setId(String id)
   {
     super.setId(id);
-    LOGGER.trace("Set delay processor ID: {0}", id);
     geoEventProducer = messaging.createGeoEventProducer(new EventDestination(id + ":event"));
   }
 
@@ -132,15 +134,13 @@ public class DelayProcessor extends GeoEventProcessorBase implements GeoEventPro
   @Override
   public void onServiceStart()
   {
+    isRunning = true;
     super.onServiceStart();
     LOGGER.trace("Enter OnServiceStart() of delay processor.");
 
+    startExecutorService();
     try
     {
-      if (executorService == null || executorService.isShutdown() || executorService.isTerminated())
-      {
-        executorService = Executors.newSingleThreadExecutor();
-      }
       if (eventLoop != null)
       {
         this.eventLoop.cancel(true);
@@ -159,6 +159,7 @@ public class DelayProcessor extends GeoEventProcessorBase implements GeoEventPro
   @Override
   public void onServiceStop()
   {
+    isRunning = false;
     LOGGER.trace("Enter OnServiceStop() of delay processor.");
     try
     {
@@ -167,13 +168,14 @@ public class DelayProcessor extends GeoEventProcessorBase implements GeoEventPro
         this.eventLoop.cancel(true);
       }
 
-      this.geoEventQueue.clear(); // TODO: Make this configurable
+      this.geoEventQueue.clear();
       LOGGER.debug("Cleared GeoEvent Queue");
     }
     catch (Exception ex)
     {
       LOGGER.error("Failed to stop processor.", ex);
     }
+    stopExecutorService();
     super.onServiceStop();
     LOGGER.trace("Exit OnServiceStop() of delay processor.");
   }
@@ -223,7 +225,7 @@ public class DelayProcessor extends GeoEventProcessorBase implements GeoEventPro
         catch (Exception e)
         {
           // This is unexpected
-          LOGGER.trace("Event consumer loop has stopped due to unknown error:", e);
+          LOGGER.debug("Event consumer loop has stopped due to unknown error:", e);
         }
       };
   }
@@ -267,6 +269,8 @@ public class DelayProcessor extends GeoEventProcessorBase implements GeoEventPro
       LOGGER.error("Failed to get processor properties.", ex);
     }
     delayMilliseconds = delayValueUnit.toMillis(delayValue);
+
+    startExecutorService();
   }
 
   @Override
@@ -282,12 +286,6 @@ public class DelayProcessor extends GeoEventProcessorBase implements GeoEventPro
       LOGGER.debug("Sent GeoEvent to consumers: {0}", geoEvent);
     }
   }
-
-  // public void setMessaging(Messaging messaging)
-  // {
-  // LOGGER.trace("Enter setMessaging() of delay processor.");
-  // this.messaging = messaging;
-  // }
 
   @Override
   public String getStatusDetails()
@@ -373,10 +371,37 @@ public class DelayProcessor extends GeoEventProcessorBase implements GeoEventPro
     super.validate();
   }
 
-  @Override
-  public void setCryptoService(GeoEventServerCryptoService cryptoService)
+  private void startExecutorService()
   {
-    super.setCryptoService(cryptoService);
-    LOGGER.error("Setting crypto service at class level: {0}", cryptoService);
+    stopExecutorService();
+    if (isRunning)
+    {
+      if (executorService == null || executorService.isShutdown() || executorService.isTerminated())
+      {
+        LOGGER.trace("Starting Delay Processor execution manager");
+        executorService = Executors.newSingleThreadScheduledExecutor();
+        executorServiceManager.put(getId(), executorService);
+      }
+    }
+  }
+
+  private void stopExecutorService()
+  {
+    if (executorService == null)
+      executorService = executorServiceManager.get(getId());
+    if (executorService != null && !executorService.isShutdown() && !executorService.isTerminated())
+    {
+      LOGGER.trace("Shutting down Delay Processor execution manager: {0}", getId());
+      try
+      {
+        executorService.shutdownNow();
+        executorService.awaitTermination(5, TimeUnit.SECONDS);
+        LOGGER.trace("Delay Processor execution manager shut down: {0}", getId());
+      }
+      catch (Exception e)
+      {
+        LOGGER.debug("Failed to terminate rendezvous execution manager for {0}. Thread may still be running.", e, getId());
+      }
+    }
   }
 }

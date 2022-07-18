@@ -75,6 +75,18 @@ public class DelayProcessorDefinition extends GeoEventProcessorDefinitionBase im
   }
 
   @Override
+  public String getName()
+  {
+    return "delay-processor";
+  }
+
+  @Override
+  public String getDomain()
+  {
+    return "com.esri.geoevent.processor";
+  }
+
+  @Override
   public String getDescription()
   {
     return PROCESSOR_DESC;

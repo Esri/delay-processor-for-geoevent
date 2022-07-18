@@ -2,7 +2,7 @@ package com.esri.geoevent.processor.delay;
 
 public interface DelayProperties
 {
-  static final String STRINGS_PATH            = "${com.esri.geoevent.processor.delay_processor.";
+  static final String STRINGS_PATH            = "${com.esri.geoevent.processor.delay-processor.";
 
   static final String DELAY_VALUE             = "delayValue";
   static final String DELAY_VALUE_UNITS       = "delayValueUnits";

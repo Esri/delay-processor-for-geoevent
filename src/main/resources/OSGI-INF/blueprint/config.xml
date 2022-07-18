@@ -4,11 +4,9 @@
   <reference id="messagingService"
     interface="com.esri.ges.messaging.Messaging" />
 
-  <reference id="cryptoService"
-    interface="com.esri.ges.core.security.GeoEventServerCryptoService" />
-
-  <bean id="delayProcessorServiceBean" class="com.esri.geoevent.processor.delay.DelayProcessorService" activation="eager">
-    <property name="crypto" ref="cryptoService" />
+  <bean id="delayProcessorServiceBean"
+    class="com.esri.geoevent.processor.delay.DelayProcessorService"
+    activation="eager">
     <property name="bundleContext" ref="blueprintBundleContext" />
     <property name="messaging" ref="messagingService" />
   </bean>
